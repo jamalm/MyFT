@@ -33,9 +33,6 @@ void StartThread(int cs)
 		fprintf(stderr, "Error - pthread_create() return code: %d\n", thread_return);
 		exit(EXIT_FAILURE);
 	}
-	printf("CREATING THREAD");
-	pthread_join(pt, NULL);
-	printf("THREAD CREATED");
 }
 
 void *thread_server(void *csock_ptr)
@@ -66,7 +63,7 @@ void HandleClient(int cs)
 		{
 			puts("Client Disconnected!\n");
 			fflush(stdout);
-			exit(EXIT_SUCCESS);
+			break;
 		} 
 		else if(READSIZE == -1) 
 		{
