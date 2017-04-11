@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 	}
 	
 	//set sockaddr_in vars
-	server.sin_port = htons(11108);			//set the port to listen on
+	server.sin_port = htons(atoi(argv[1]));			//set the port to listen on
 	server.sin_family = AF_INET;			//Use IPv4 protocol
 	server.sin_addr.s_addr = INADDR_ANY;	//the socket will bind to all local interfaces
 	

@@ -8,14 +8,16 @@ Desc:		This file creates the thread and handles the client a client individually
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
 #include "ServerThread.h"
-//#include "CSProtocol.h"
+#include "Auth.h"
+#include "CSProtocol.h"
 
 
 //thread function call
 void StartThread(int cs)
 {
-	printf("Hello still here");
 	pthread_t pt;
 	int* arg = malloc(sizeof(*arg));
 	if(arg == NULL)
@@ -41,22 +43,39 @@ void *thread_server(void *csock_ptr)
 	cs = *((int *) csock_ptr);
 	HandleClient(cs);
 	free(csock_ptr);
+	printf("HANDLING FINISHED");
 }
 
 void HandleClient(int cs)
 {
-
-	char message[500];
-	char *response;
+	//setup buffer to handles incoming/outgoing messages
+	char message[1000];
 	int READSIZE;
+	int auth = 0;
 	
 	
-	while(1)
+	//handle authentication initially after client connects before comms begin
+	pid_t tid = syscall(__NR_gettid);
+	printf("Authenticating User %d\n", tid);
+	
+	char *username = HandleAuth(cs);
+	char *password;
+	strtok_r(username, " ", &password);
+	auth = Authenticate(username, password);
+	
+	printf("Authentication Result: %d (TRUE=1/FALSE=0)\n", auth);
+	Authenticated(auth, cs);
+	
+	//if auth is 0, end session with user
+	while(auth)
 	{
+		
+		HandleFileTransfer(cs);
 		//reset message buffer
-		memset(message, 0, 500);
+		/*memset(message, 0, 1000);
 		//read in message
 		READSIZE = recv(cs, message, 2000, 0);
+		printf("\nMessage received: %s", message);
 		
 		//check if client disconnected
 		if(READSIZE == 0) 
@@ -67,20 +86,15 @@ void HandleClient(int cs)
 		} 
 		else if(READSIZE == -1) 
 		{
-			perror("read error");
+			perror("\nread error");
 			exit(EXIT_FAILURE);
 		} 
 		else 
 		{
 			//handle message
-			response = HandleRequest(message);
-			//return output message to client
-			write(cs, response, strlen(response));
-		}
+			HandleFileTransfer(message, cs);
+		}*/
 	}
 }
 
-char *HandleRequest(char *message)
-{
-	return "testing all the stuff";
-}
+
