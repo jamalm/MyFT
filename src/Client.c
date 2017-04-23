@@ -7,33 +7,12 @@ Desc:		This File creates the Client interface for a user to communicate with the
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <errno.h>
 #include "CSProtocol.h"
-
-char *GetFileContents(char *filename)
-{
-	char *buffer = NULL;
-	size_t size = 0;
-	
-	FILE *fp = fopen(filename, "r");
-	
-	//get file length
-	fseek(fp, 0, SEEK_END);	//go to end of file
-	size = ftell(fp);	//how many bytes passed
-	
-	//set position to zero
-	rewind(fp);
-	
-	//allocate sufficient memory to buffer
-	buffer = malloc((size+1) * sizeof(*buffer));	//+1 for the \0
-	
-	//read the fle into the buffer
-	fread(buffer, size, 1, fp);//read in file
-	buffer[size] = '\0';//NULL-terminate buffer
-	
-	return buffer;
-}
+char *GetFileContents(char *);
 
 int main(int argc, char *argv[])
 {
@@ -68,16 +47,22 @@ int main(int argc, char *argv[])
 	{
 		char username[500];
 		char password[500];
+		
 		printf("Connected to the Server!\n");
 		printf("\nEnter your username: ");
+		//get username and remove newline
 		fgets(username, 500, stdin);
 		username[strcspn(username, "\n")] = 0;
+		
+		//same with password
 		printf("\nPassword: ");
 		fgets(password, 500, stdin);
 		password[strcspn(password, "\n")] = 0;
-		strcat(username ," ");
+		
+		//send them to server
 		auth = Auth(username, password, SID);
 		printf("AUTH: %d", auth);
+		
 		if(auth == 0)
 		{
 			printf("Failed to Authenticate!\nExiting...");
@@ -92,18 +77,27 @@ int main(int argc, char *argv[])
 		char localfile[500];
 		char *file;
 		char *remotepath;
+		char fullPath[500];
 		
 		printf("-----------------------------------------------\nSend File to server (FORMAT: >>NameOfFile RemotePath)\nAvailable dest directories:\n/\n/Sales\n/Promotions\n/Offers\n/Marketing\n-----------------------------------------------\n>>");
 		fgets(localfile, sizeof(localfile), stdin);
+		printf("\nREAD IN %s\n", localfile);
 		
-		//get path to local file
+		//split local filename from the remotepath arg
 		strtok_r(localfile, " ", &remotepath);
+		remotepath[strcspn(remotepath, "\n")] = 0;
 		
-		//get contents of file
-		char *filepath;
+		//get current directory
+		char filepath[500];
 		getcwd(filepath, 100);
-		file = GetFileContents(filepath);
-		free(filepath);
+		strcat(filepath, "/");
+		printf("\nCurrent working Directory is %s\n", filepath);
+		strcpy(fullPath, filepath);
+		strcat(fullPath, localfile);
+		//get contents
+		printf("Path to File is: %s\n", fullPath);
+		file = GetFileContents(fullPath);
+		printf("Got file contents\n");
 		
 		
 		//DEFINE PROTOCOL FOR COMMUNICATION
@@ -128,6 +122,39 @@ int main(int argc, char *argv[])
 	
 	close(SID);
 	return 0;
+}
+
+char *GetFileContents(char *filename)
+{
+	printf("Entered Function\n");
+	char *buffer = NULL;
+	size_t size = 0;
+	struct stat st;
+	
+	printf("opening file\n");
+	FILE *fp = fopen(filename, "r");
+	printf("File Pointer: %d\n", fp);
+	stat(filename, &st);
+	size = st.st_size;
+	
+	printf("Size of File: %d\n", size);
+	/*
+	//get file length
+	fseek(fp, 0, SEEK_END);	//go to end of file
+	size = ftell(fp);	//how many bytes passed
+	
+	//set position to zero
+	rewind(fp);
+	*/
+	//allocate sufficient memory to buffer
+	buffer = malloc((size+1) * sizeof(*buffer));	//+1 for the \0
+	
+	//read the fle into the buffer
+	fread(buffer, size, 1, fp);//read in file
+	buffer[size] = '\0';//NULL-terminate buffer
+	
+	return buffer;
+	
 }
 
 

@@ -69,7 +69,7 @@ void HandleClient(int cs)
 	//if auth is 0, end session with user
 	while(auth)
 	{
-		
+		printf("\nHandling File stuff\n");
 		HandleFileTransfer(cs);
 		//reset message buffer
 		/*memset(message, 0, 1000);
