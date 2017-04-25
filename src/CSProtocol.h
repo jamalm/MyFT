@@ -2,7 +2,7 @@
 #define CSPROTOCOL_H_
 void Authenticated(int, int);
 char *HandleAuth(int);
-void HandleFileTransfer(int);
+char *HandleFileTransfer(int);
 
 int Auth(char *, char *, int);
 char *FileTransfer(char *, char *,char *, int);

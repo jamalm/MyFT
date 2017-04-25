@@ -8,15 +8,17 @@ Desc:		This file creates the thread and handles the client a client individually
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include "ServerThread.h"
 #include "Auth.h"
 #include "CSProtocol.h"
+#include "log.h"
 
-
+pthread_mutex_t lock_x;
 //thread function call
-void StartThread(int cs)
+void StartThread(int cs, pthread_mutex_t lock)
 {
 	pthread_t pt;
 	int* arg = malloc(sizeof(*arg));
@@ -27,6 +29,7 @@ void StartThread(int cs)
 	}
 	else {
 		*arg = cs;
+		lock_x = lock;
 	}
 	int thread_return;
 	thread_return = pthread_create(&pt, NULL, thread_server, arg);
@@ -43,7 +46,6 @@ void *thread_server(void *csock_ptr)
 	cs = *((int *) csock_ptr);
 	HandleClient(cs);
 	free(csock_ptr);
-	printf("HANDLING FINISHED");
 }
 
 void HandleClient(int cs)
@@ -52,6 +54,7 @@ void HandleClient(int cs)
 	char message[1000];
 	int READSIZE;
 	int auth = 0;
+	char * clientName;
 	
 	
 	//handle authentication initially after client connects before comms begin
@@ -60,8 +63,17 @@ void HandleClient(int cs)
 	
 	char *username = HandleAuth(cs);
 	char *password;
-	strtok_r(username, " ", &password);
-	auth = Authenticate(username, password);
+	if(strcmp(username, "") == 0)
+	{
+		auth = 0;
+		printf("Invalid username\\password\n");
+	}
+	else
+	{
+		strtok_r(username, " ", &password);
+		auth = Authenticate(username, password);
+	}
+
 	
 	printf("Authentication Result: %d (TRUE=1/FALSE=0)\n", auth);
 	Authenticated(auth, cs);
@@ -69,8 +81,28 @@ void HandleClient(int cs)
 	//if auth is 0, end session with user
 	while(auth)
 	{
-		printf("\nHandling File stuff\n");
-		HandleFileTransfer(cs);
+		printf("User: %s Logged In", username);
+		Log(username, "Logged In");
+		pthread_mutex_lock(&lock_x);
+		char *filepath = HandleFileTransfer(cs);
+		pthread_mutex_unlock(&lock_x);
+		if(strcmp(filepath, "Quit") == 0)
+		{
+			close(cs);
+			break;
+		}
+		if(filepath != NULL)
+		{
+			printf("User: %s\nFile: %s\nTimestamp: %s\n", username, filepath, GetDate());
+			LogEntry(username, filepath, GetDate());
+			free(filepath);
+		}
+		else 
+		{
+			Log(username, "Failed to transfer files");
+		}
+
+		
 		//reset message buffer
 		/*memset(message, 0, 1000);
 		//read in message
@@ -94,6 +126,10 @@ void HandleClient(int cs)
 			//handle message
 			HandleFileTransfer(message, cs);
 		}*/
+	}
+	if(auth == 0)
+	{
+		Log(username, "User Failed to Authenticate");
 	}
 }
 

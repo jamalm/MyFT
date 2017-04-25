@@ -11,12 +11,50 @@ Desc:		This File creates the Client interface for a user to communicate with the
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>
+#include <signal.h>
+#include <termcap.h>
 #include "CSProtocol.h"
 char *GetFileContents(char *);
+int exists(char *);
+void clear_screen();
+int SID = 0;
+
+void endComms()
+{
+	if(SID != 0)
+	{
+		printf("ENDING COMMS\n ");
+		EndConnection(SID);
+		close(SID);
+		exit(EXIT_SUCCESS);
+	}
+	else
+	{
+		printf("SID: %d", SID);
+	}
+}
+
+
+void sig_handler(int sigNum)
+{
+	if(sigNum == SIGINT)
+	{
+		//end communications
+		endComms();
+		printf("\nExiting Program...\n");
+		exit(EXIT_SUCCESS);
+	}
+}
+
 
 int main(int argc, char *argv[])
 {
-	int SID;
+	
+	if(signal(SIGINT, sig_handler) == SIG_ERR)
+	{
+		printf("Error with SIGINT, unsafe execution, aborting...\n");
+		exit(EXIT_FAILURE);
+	}
 	int auth = 0;
 	struct sockaddr_in server;
 	char outBuffer[1000];
@@ -45,6 +83,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	} else 
 	{
+		clear_screen();
 		char username[500];
 		char password[500];
 		
@@ -61,7 +100,6 @@ int main(int argc, char *argv[])
 		
 		//send them to server
 		auth = Auth(username, password, SID);
-		printf("AUTH: %d", auth);
 		
 		if(auth == 0)
 		{
@@ -78,15 +116,19 @@ int main(int argc, char *argv[])
 		char *file;
 		char *remotepath;
 		char fullPath[500];
-		
-		printf("-----------------------------------------------\nSend File to server (FORMAT: >>NameOfFile RemotePath)\nAvailable dest directories:\n/\n/Sales\n/Promotions\n/Offers\n/Marketing\n-----------------------------------------------\n>>");
+
+		printf("-----------------------------------------------\nSend File to server (FORMAT: >>NameOfFile /RemotePath/)\nAvailable dest directories:\n/\n/Sales/\n/Promotions/\n/Offers/\n/Marketing/\nEnter \"exit\" to quit!\n-----------------------------------------------\n>>");
 		fgets(localfile, sizeof(localfile), stdin);
-		printf("\nREAD IN %s\n", localfile);
+		if(strcmp(localfile, "exit\n") == 0)
+		{
+			//exits the application
+			endComms();
+		}
 		
 		//split local filename from the remotepath arg
 		strtok_r(localfile, " ", &remotepath);
 		remotepath[strcspn(remotepath, "\n")] = 0;
-		
+
 		//get current directory
 		char filepath[500];
 		getcwd(filepath, 100);
@@ -94,29 +136,18 @@ int main(int argc, char *argv[])
 		printf("\nCurrent working Directory is %s\n", filepath);
 		strcpy(fullPath, filepath);
 		strcat(fullPath, localfile);
-		//get contents
-		printf("Path to File is: %s\n", fullPath);
-		file = GetFileContents(fullPath);
-		printf("Got file contents\n");
 		
-		
-		//DEFINE PROTOCOL FOR COMMUNICATION
-		//send data
-		inBuffer = FileTransfer(localfile, file, remotepath, SID);
-		/*
-		if(send(SID, outBuffer, strlen(outBuffer), 0) < 0)
+		if((exists(fullPath)) == 0)
 		{
-			printf("Failed to Send!\nExiting due to undefined error..\n");
-			exit(EXIT_FAILURE);
+			//get contents
+			file = GetFileContents(fullPath);
+			inBuffer = FileTransfer(localfile, file, remotepath, SID);
 		}
-		
-		//Receive reply from server
-		if(recv(SID, inBuffer, 500, 0) < 0)
+		else 
 		{
-			printf("Error receiving Message from server: IO Error\n");
-			break;
-		}*/
-		
+			inBuffer = "File does not exist";
+		}
+		clear_screen();
 		printf("\nSERVER>> %s\n", inBuffer);
 	}
 	
@@ -126,26 +157,18 @@ int main(int argc, char *argv[])
 
 char *GetFileContents(char *filename)
 {
-	printf("Entered Function\n");
+
 	char *buffer = NULL;
 	size_t size = 0;
 	struct stat st;
-	
-	printf("opening file\n");
+
 	FILE *fp = fopen(filename, "r");
-	printf("File Pointer: %d\n", fp);
+
 	stat(filename, &st);
 	size = st.st_size;
 	
 	printf("Size of File: %d\n", size);
-	/*
-	//get file length
-	fseek(fp, 0, SEEK_END);	//go to end of file
-	size = ftell(fp);	//how many bytes passed
-	
-	//set position to zero
-	rewind(fp);
-	*/
+
 	//allocate sufficient memory to buffer
 	buffer = malloc((size+1) * sizeof(*buffer));	//+1 for the \0
 	
@@ -157,4 +180,24 @@ char *GetFileContents(char *filename)
 	
 }
 
+int exists(char *filename)
+{
+	FILE *file;
+	if(file = fopen(filename, "r"))
+	{
+		fclose(file);
+		return 0;
+	}
+	return 1;
+}
+
+void clear_screen()
+{
+	//see www.stackoverflow.com/questions/17271576/clear-screen-in-c-and-c-on-unix-based-system
+	char buf[1024];
+	char *str;
+	tgetent(buf, getenv("TERM"));
+	str = tgetstr("cl", NULL);
+	fputs(str, stdout);
+}
 
