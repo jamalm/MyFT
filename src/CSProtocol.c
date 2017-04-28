@@ -9,6 +9,7 @@
 
 
 //server protocols
+//notification for client on authentication
 void Authenticated(int auth_flag, int sockfd)
 {
 	if(auth_flag)
@@ -20,19 +21,22 @@ void Authenticated(int auth_flag, int sockfd)
 		send(sockfd, "fail", strlen("fail"), 0);
 	}
 }
+//handles the transfer of the file
 char *HandleFileTransfer(int sockfd)
 {
 
-	int bytes = 0;
-	char *filelocation = (char *)malloc(MAX_BUF * sizeof(char *));
+	int bytes = 0;	//for the number of bytes transferred
+	char *filelocation = (char *)malloc(MAX_BUF * sizeof(char *));	//this is the location of the file that is returned after file IO is complete
+	//string literals for the directories
 	const char *root = "/var/html/";
 	const char *sales = "/var/html/Sales/";
 	const char *promos = "/var/html/Promotions/";
 	const char *offers = "/var/html/Offers/";
 	const char *market = "/var/html/Marketing/";
 	const char *dirs[] = {root, sales, promos, offers, market};
-
 	const char *DIR = "/var/html";
+
+	//various buffers for information received from the client
 	char loc[MAX_BUF];
 	char file_name[MAX_BUF];
 	char dest_folder[MAX_BUF];
@@ -124,7 +128,8 @@ char *HandleFileTransfer(int sockfd)
 			break;
 		}
 	}
-	
+
+	//respond with the number of bytes written to file
 	char response[MAX_BUF] = { };
 	if(bytes > 0)
 	{
@@ -143,12 +148,14 @@ char *HandleFileTransfer(int sockfd)
 }
 char *HandleAuth(int sockfd)
 {
+	//handles the input of authentication of username and password
 	char *inBuffer = (char *)malloc(MAX_BUF);
 	recv(sockfd, inBuffer, MAX_BUF, 0);
 	return inBuffer;
 }
 
 //client protocols
+//sends credentials to server
 int Auth(char *username, char *password, int sockfd)
 {
 	char inBuffer[MAX_BUF];
@@ -173,14 +180,9 @@ int Auth(char *username, char *password, int sockfd)
 		return 0;
 	}
 }
+//sends the file information and contents
 char *FileTransfer(char *file_path, char *fileContents, char *dest_file, int sockfd)
 {
-	/*
-	printf("\nSending file..\n");
-	printf("file path is %s with a length of %d\n", file_path, strlen(file_path));
-	printf("destination file is %s\n", dest_file);
-	printf("Contents of the file is \n%s\nIT HAS A SIZE OF %d\n", fileContents, strlen(fileContents));
-	*/
 	char *inBuffer = (char *)malloc(MAXFILESIZE);
 	//client sends src folder
 	send(sockfd, file_path, MAX_BUF, 0);
@@ -192,30 +194,13 @@ char *FileTransfer(char *file_path, char *fileContents, char *dest_file, int soc
 	send(sockfd, dest_file, MAX_BUF, 0);
 	//printf("Sent: %s\n", dest_file);
 	recv(sockfd, inBuffer, MAX_BUF, 0);
-	//printf("Receiving dest_file confirmed: %s\n", inBuffer);
-	/*
-	//send size of file
-	char size[MAX_BUF];
-	memset(inBuffer, 0, MAX_BUF);
-	memset(size, 0, MAX_BUF);
-	printf("setting size of file %s which is %d\n", file_path, strlen(fileContents));
-	int check = snprintf(size, MAX_BUF - 1, "%d", strlen(fileContents));
-	printf("Size: %s\n", size);
-	send(sockfd, size, MAX_BUF, 0);
-	recv(sockfd, inBuffer, MAX_BUF, 0);
-	printf("Receiving size of file confirmed: %s\n", inBuffer);
-	int s = atoi(size);
-	//if confirmed size, send file contents over 
-	if(s == atoi(inBuffer))
-	{
-		*/
+
 	send(sockfd, fileContents, MAXFILESIZE, 0);		
-	//printf("Sent: %s\n", fileContents);
-	//}
+	//reset the buffer
 	memset(inBuffer, 0, MAXFILESIZE);
 	//wait for response
 	recv(sockfd, inBuffer, MAXFILESIZE, 0);
-	//printf("Receiving Number of bytes read into server: %s\n", inBuffer);
+
 	return inBuffer;
 }
 

@@ -78,6 +78,7 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
+// This initialises the directories required to run the server transfer
 void setup_directories()
 {
 	struct stat st = {0};

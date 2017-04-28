@@ -15,11 +15,12 @@ Desc:		This file creates the thread and handles the client a client individually
 #include "Auth.h"
 #include "CSProtocol.h"
 #include "log.h"
-
+// mutex lock for multithreaded access to file transfer
 pthread_mutex_t lock_x;
 //thread function call
 void StartThread(int cs, pthread_mutex_t lock)
 {
+	//create the thread
 	pthread_t pt;
 	int* arg = malloc(sizeof(*arg));
 	if(arg == NULL)
@@ -28,6 +29,7 @@ void StartThread(int cs, pthread_mutex_t lock)
 		exit(EXIT_FAILURE);
 	}
 	else {
+		//Init the thread lock and the socket
 		*arg = cs;
 		lock_x = lock;
 	}
@@ -40,6 +42,7 @@ void StartThread(int cs, pthread_mutex_t lock)
 	}
 }
 
+// this is where the server thread is created
 void *thread_server(void *csock_ptr)
 {
 	int cs;
@@ -48,6 +51,7 @@ void *thread_server(void *csock_ptr)
 	free(csock_ptr);
 }
 
+//this is the main line of execution for the thread
 void HandleClient(int cs)
 {
 	//setup buffer to handles incoming/outgoing messages
@@ -76,16 +80,22 @@ void HandleClient(int cs)
 
 	
 	printf("Authentication Result: %d (TRUE=1/FALSE=0)\n", auth);
+	//tell the client the auth result
 	Authenticated(auth, cs);
 	
 	//if auth is 0, end session with user
 	while(auth)
 	{
 		printf("User: %s Logged In", username);
+		//log the user login
 		Log(username, "Logged In");
+		// lock the file transfer when a server thread accesses it
 		pthread_mutex_lock(&lock_x);
 		char *filepath = HandleFileTransfer(cs);
+		//unlock after shared data is freed
 		pthread_mutex_unlock(&lock_x);
+
+		//if the user wants to end comms
 		if(strcmp(filepath, "Quit") == 0)
 		{
 			close(cs);
@@ -93,6 +103,7 @@ void HandleClient(int cs)
 		}
 		if(filepath != NULL)
 		{
+			//log the file transfer
 			printf("User: %s\nFile: %s\nTimestamp: %s\n", username, filepath, GetDate());
 			LogEntry(username, filepath, GetDate());
 			free(filepath);
@@ -101,31 +112,6 @@ void HandleClient(int cs)
 		{
 			Log(username, "Failed to transfer files");
 		}
-
-		
-		//reset message buffer
-		/*memset(message, 0, 1000);
-		//read in message
-		READSIZE = recv(cs, message, 2000, 0);
-		printf("\nMessage received: %s", message);
-		
-		//check if client disconnected
-		if(READSIZE == 0) 
-		{
-			puts("Client Disconnected!\n");
-			fflush(stdout);
-			break;
-		} 
-		else if(READSIZE == -1) 
-		{
-			perror("\nread error");
-			exit(EXIT_FAILURE);
-		} 
-		else 
-		{
-			//handle message
-			HandleFileTransfer(message, cs);
-		}*/
 	}
 	if(auth == 0)
 	{

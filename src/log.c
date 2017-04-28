@@ -13,6 +13,7 @@ void Log(char *name, char *message)
 	syslog(LOG_INFO, message);
 	closelog();
 }
+//log for file transfer
 void LogEntry(char *username, char *filename, char *timestamp)
 {
 	openlog(username, LOG_PID|LOG_CONS, LOG_USER);
@@ -23,7 +24,7 @@ void LogEntry(char *username, char *filename, char *timestamp)
 	syslog(LOG_INFO, message);
 	closelog();
 }
-
+// log for errors occurred
 void LogErr(char *name, char *message)
 {
 	openlog(name, LOG_PID|LOG_CONS, LOG_USER);
@@ -31,6 +32,7 @@ void LogErr(char *name, char *message)
 	closelog();
 }
 
+// get the timestamp for the log
 char* GetDate()
 {
 	char* date = malloc(sizeof(char)*100);

@@ -18,7 +18,7 @@ char *GetFileContents(char *);
 int exists(char *);
 void clear_screen();
 int SID = 0;
-
+//ends the communcation gracefully
 void endComms()
 {
 	if(SID != 0)
@@ -34,7 +34,7 @@ void endComms()
 	}
 }
 
-
+//handles Ctrl+C interrupts accordingly and ends the program gracefully
 void sig_handler(int sigNum)
 {
 	if(sigNum == SIGINT)
@@ -49,12 +49,13 @@ void sig_handler(int sigNum)
 
 int main(int argc, char *argv[])
 {
-	
+	//catch SIGINT signal
 	if(signal(SIGINT, sig_handler) == SIG_ERR)
 	{
 		printf("Error with SIGINT, unsafe execution, aborting...\n");
 		exit(EXIT_FAILURE);
 	}
+	//authentication boolean
 	int auth = 0;
 	struct sockaddr_in server;
 	char outBuffer[1000];
@@ -117,6 +118,7 @@ int main(int argc, char *argv[])
 		char *remotepath;
 		char fullPath[500];
 
+		// prompt for the user
 		printf("-----------------------------------------------\nSend File to server (FORMAT: >>NameOfFile /RemotePath/)\nAvailable dest directories:\n/\n/Sales/\n/Promotions/\n/Offers/\n/Marketing/\nEnter \"exit\" to quit!\n-----------------------------------------------\n>>");
 		fgets(localfile, sizeof(localfile), stdin);
 		if(strcmp(localfile, "exit\n") == 0)
@@ -155,6 +157,7 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
+//file IO
 char *GetFileContents(char *filename)
 {
 
@@ -180,6 +183,7 @@ char *GetFileContents(char *filename)
 	
 }
 
+//checks to see if the file exists
 int exists(char *filename)
 {
 	FILE *file;
@@ -191,6 +195,7 @@ int exists(char *filename)
 	return 1;
 }
 
+//clears the screen to add a level of professionalism to the program :)
 void clear_screen()
 {
 	//see www.stackoverflow.com/questions/17271576/clear-screen-in-c-and-c-on-unix-based-system
